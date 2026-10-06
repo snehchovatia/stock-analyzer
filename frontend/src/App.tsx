@@ -3,19 +3,23 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 
 type Point = { date: string; close: number };
 type Fund = { eps: number; pe: number; profit_margin: number; debt: number; free_cash_flow: number; volatility: number; return_1y: number };
+type News = { title: string; url: string; score: number };
 
 export default function App() {
   const [ticker, setTicker] = useState("NVDA");
   const [data, setData] = useState<Point[]>([]);
   const [fund, setFund] = useState<Fund | null>(null);
+  const [news, setNews] = useState<News[]>([]);
 
   const load = async () => {
-    const [p, f] = await Promise.all([
+    const [p, f, n] = await Promise.all([
       fetch(`http://127.0.0.1:8000/stock/${ticker}`).then((r) => r.json()),
       fetch(`http://127.0.0.1:8000/fundamentals/${ticker}`).then((r) => r.json()),
+      fetch(`http://127.0.0.1:8000/news/${ticker}`).then((r) => r.json()),
     ]);
     setData(p);
     setFund(f);
+    setNews(n);
   };
 
   return (
@@ -51,6 +55,15 @@ export default function App() {
           </LineChart>
         </ResponsiveContainer>
       </div>
+      <h2 style={{ marginTop: 24 }}>News sentiment</h2>
+      {news.map((n) => (
+        <div key={n.url} style={{ padding: "8px 0", borderBottom: "1px solid #333" }}>
+          <span style={{ color: n.score > 0.05 ? "#76b900" : n.score < -0.05 ? "#e5484d" : "#999", marginRight: 8 }}>
+            {n.score.toFixed(2)}
+          </span>
+          {n.title}
+        </div>
+      ))}
     </div>
   );
 }
