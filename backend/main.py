@@ -89,9 +89,12 @@ def get_news(ticker: str):
         "to": str(today),
         "token": os.getenv("FINNHUB_KEY"),
     })
+    items = r.json()
+    t = ticker.upper()
+    relevant = [n for n in items if t in (n.get("related") or "").upper().split(",") or t in n["headline"].upper()]
     return [
         {"title": n["headline"], "url": n["url"], "score": analyzer.polarity_scores(n["headline"])["compound"]}
-        for n in r.json()[:10]
+        for n in (relevant or items)[:10]
     ]
 
 
