@@ -15,12 +15,12 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 load_dotenv()
 
 app = FastAPI()
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 analyzer = SentimentIntensityAnalyzer()
 client = anthropic.Anthropic()
 
-engine = create_engine("postgresql+psycopg://postgres:stockpass@localhost:5432/stocks")
+engine = create_engine(os.getenv("DB_URL", "postgresql+psycopg://postgres:stockpass@localhost:5432/stocks"))
 Base = declarative_base()
 
 

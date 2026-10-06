@@ -5,6 +5,8 @@ type Point = { date: string; close: number };
 type Fund = { eps: number; pe: number; profit_margin: number; debt: number; free_cash_flow: number; volatility: number; return_1y: number };
 type News = { title: string; url: string; score: number };
 
+const API = `http://${window.location.hostname}:8000`;
+
 export default function App() {
   const [ticker, setTicker] = useState("NVDA");
   const [data, setData] = useState<Point[]>([]);
@@ -14,14 +16,14 @@ export default function App() {
 
   const load = async () => {
     const [p, f, n] = await Promise.all([
-      fetch(`http://127.0.0.1:8000/stock/${ticker}`).then((r) => r.json()),
-      fetch(`http://127.0.0.1:8000/fundamentals/${ticker}`).then((r) => r.json()),
-      fetch(`http://127.0.0.1:8000/news/${ticker}`).then((r) => r.json()),
+      fetch(`${API}/stock/${ticker}`).then((r) => r.json()),
+      fetch(`${API}/fundamentals/${ticker}`).then((r) => r.json()),
+      fetch(`${API}/news/${ticker}`).then((r) => r.json()),
     ]);
     setData(p);
     setFund(f);
     setNews(n);
-    fetch(`http://127.0.0.1:8000/summary/${ticker}`).then((r) => r.json()).then((s) => setSummary(s.summary));
+    fetch(`${API}/summary/${ticker}`).then((r) => r.json()).then((s) => setSummary(s.summary));
   };
 
   return (
