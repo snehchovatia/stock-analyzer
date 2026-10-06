@@ -10,6 +10,7 @@ export default function App() {
   const [data, setData] = useState<Point[]>([]);
   const [fund, setFund] = useState<Fund | null>(null);
   const [news, setNews] = useState<News[]>([]);
+  const [summary, setSummary] = useState("");
 
   const load = async () => {
     const [p, f, n] = await Promise.all([
@@ -20,6 +21,7 @@ export default function App() {
     setData(p);
     setFund(f);
     setNews(n);
+    fetch(`http://127.0.0.1:8000/summary/${ticker}`).then((r) => r.json()).then((s) => setSummary(s.summary));
   };
 
   return (
@@ -27,6 +29,7 @@ export default function App() {
       <h1>Stock Analyzer</h1>
       <input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} />
       <button onClick={load}>Analyze</button>
+      {summary && <p style={{ marginTop: 24, lineHeight: 1.5 }}>{summary}</p>}
       {fund && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginTop: 24 }}>
           {[

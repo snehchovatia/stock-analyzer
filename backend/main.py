@@ -52,3 +52,18 @@ def get_news(ticker: str):
         {"title": n["headline"], "url": n["url"], "score": analyzer.polarity_scores(n["headline"])["compound"]}
         for n in r.json()[:10]
     ]
+
+import anthropic
+client = anthropic.Anthropic()
+
+@app.get("/summary/{ticker}")
+def get_summary(ticker: str):
+    f = get_fundamentals(ticker)
+    headlines = [n["title"] for n in get_news(ticker)]
+    prompt = f"Write a concise 4-sentence analysis of {ticker} from these metrics and headlines. Not financial advice.\nMetrics: {f}\nHeadlines: {headlines}"
+    msg = client.messages.create(
+        model="claude-sonnet-5-5",
+        max_tokens=400,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return {"summary": msg.content[0].text}
