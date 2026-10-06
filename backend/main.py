@@ -1,11 +1,15 @@
 import os
 import requests
-from datetime import date, timedelta
-from dotenv import load_dotenv
 import numpy as np
 import yfinance as yf
+import anthropic
+from datetime import date, datetime, timedelta
+from functools import wraps
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import create_engine, Column, String, DateTime, JSON
+from sqlalchemy.orm import declarative_base, Session
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 load_dotenv()
@@ -14,15 +18,51 @@ app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 
 analyzer = SentimentIntensityAnalyzer()
+client = anthropic.Anthropic()
+
+engine = create_engine("postgresql+psycopg://postgres:stockpass@localhost:5432/stocks")
+Base = declarative_base()
+
+
+class Cache(Base):
+    __tablename__ = "cache"
+    key = Column(String, primary_key=True)
+    data = Column(JSON)
+    created = Column(DateTime)
+
+
+Base.metadata.create_all(engine)
+
+
+def cached(kind, ttl_minutes):
+    def deco(fn):
+        @wraps(fn)
+        def wrapper(ticker: str):
+            key = f"{kind}:{ticker.upper()}"
+            with Session(engine) as s:
+                row = s.get(Cache, key)
+                if row and datetime.now() - row.created < timedelta(minutes=ttl_minutes):
+                    return row.data
+                data = fn(ticker)
+                if row:
+                    row.data, row.created = data, datetime.now()
+                else:
+                    s.add(Cache(key=key, data=data, created=datetime.now()))
+                s.commit()
+                return data
+        return wrapper
+    return deco
 
 
 @app.get("/stock/{ticker}")
+@cached("stock", 15)
 def get_stock(ticker: str):
     df = yf.Ticker(ticker).history(period="1y")
     return [{"date": str(d.date()), "close": round(c, 2)} for d, c in zip(df.index, df["Close"])]
 
 
 @app.get("/fundamentals/{ticker}")
+@cached("fund", 60)
 def get_fundamentals(ticker: str):
     t = yf.Ticker(ticker)
     info = t.info
@@ -40,6 +80,7 @@ def get_fundamentals(ticker: str):
 
 
 @app.get("/news/{ticker}")
+@cached("news", 15)
 def get_news(ticker: str):
     today = date.today()
     r = requests.get("https://finnhub.io/api/v1/company-news", params={
@@ -53,10 +94,9 @@ def get_news(ticker: str):
         for n in r.json()[:10]
     ]
 
-import anthropic
-client = anthropic.Anthropic()
 
 @app.get("/summary/{ticker}")
+@cached("summary", 60)
 def get_summary(ticker: str):
     f = get_fundamentals(ticker)
     headlines = [n["title"] for n in get_news(ticker)]
