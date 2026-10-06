@@ -2,6 +2,8 @@ from fastapi import FastAPI
 import yfinance as yf
 
 app = FastAPI()
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173"], allow_methods=["*"], allow_headers=["*"])
 
 @app.get("/stock/{ticker}")
 def get_stock(ticker: str):
